@@ -481,4 +481,16 @@ defmodule ExNcurses do
   """
   @spec doupdate() :: :ok
   def doupdate(), do: Server.invoke(:doupdate)
+
+  @doc """
+  Resize a window.
+  """
+  @spec wresize(window(), non_neg_integer(), non_neg_integer()) :: :ok
+  def wresize(win, lines, cols), do: Server.invoke(:wresize, {win, lines, cols})
+
+  @doc """
+  Move a window's origin (upper left) to a new coordinate.
+  """
+  @spec mvwin(window(), non_neg_integer(), non_neg_integer()) :: :ok
+  def mvwin(win, y, x), do: Server.invoke(:mvwin, {win, y, x})
 end

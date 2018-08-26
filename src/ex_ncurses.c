@@ -716,6 +716,36 @@ ex_move(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[])
 }
 
 static ERL_NIF_TERM
+ex_wresize(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[])
+{
+    struct ex_ncurses_priv *data = enif_priv_data(env);
+    struct ex_window *obj;
+    int y, x;
+    if (!enif_get_resource(env, argv[0], data->window_rt, (void **) &obj) ||
+            !enif_get_int(env, argv[1], &y) ||
+            !enif_get_int(env, argv[2], &x))
+        return enif_make_badarg(env);
+
+    int code = wresize(obj->win, y, x);
+    return done(env, code);
+}
+
+static ERL_NIF_TERM
+ex_mvwin(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[])
+{
+    struct ex_ncurses_priv *data = enif_priv_data(env);
+    struct ex_window *obj;
+    int y, x;
+    if (!enif_get_resource(env, argv[0], data->window_rt, (void **) &obj) ||
+            !enif_get_int(env, argv[1], &y) ||
+            !enif_get_int(env, argv[2], &x))
+        return enif_make_badarg(env);
+
+    int code = mvwin(obj->win, y, x);
+    return done(env, code);
+}
+
+static ERL_NIF_TERM
 ex_curs_set(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[])
 {
     int visibility;
@@ -823,7 +853,9 @@ static ErlNifFunc invoke_funcs[] = {
     {"wclear",       1, ex_wclear,     0},
     {"wmove",        3, ex_wmove,      0},
     {"wrefresh",     1, ex_wrefresh,   0},
-    {"wnoutrefresh", 1, ex_wnoutrefresh, 0}
+    {"wnoutrefresh", 1, ex_wnoutrefresh, 0},
+    {"wresize",      3, ex_wresize,    0},
+    {"mvwin",        3, ex_mvwin,      0}
 };
 
 static ERL_NIF_TERM
