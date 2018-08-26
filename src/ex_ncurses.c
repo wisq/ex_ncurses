@@ -379,6 +379,25 @@ ex_wrefresh(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[])
 }
 
 static ERL_NIF_TERM
+ex_wnoutrefresh(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[])
+{
+    struct ex_ncurses_priv *data = enif_priv_data(env);
+    struct ex_window *obj;
+    if (!enif_get_resource(env, argv[0], data->window_rt, (void **) &obj))
+        return enif_make_badarg(env);
+
+    int code = wnoutrefresh(obj->win);
+    return done(env, code);
+}
+
+static ERL_NIF_TERM
+ex_doupdate(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[])
+{
+    int code = doupdate();
+    return done(env, code);
+}
+
+static ERL_NIF_TERM
 ex_flushinp(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[])
 {
     int code = flushinp();
@@ -774,6 +793,7 @@ static ErlNifFunc invoke_funcs[] = {
     {"cols",         0, ex_cols,       0},
     {"curs_set",     1, ex_curs_set,   0},
     {"delwin",       1, ex_delwin,     0},
+    {"doupdate",     0, ex_doupdate,   0},
     {"noecho",       0, ex_noecho,     0},
     {"flushinp",     0, ex_flushinp,   0},
     {"getch",        0, ex_getch,      0},
@@ -802,7 +822,8 @@ static ErlNifFunc invoke_funcs[] = {
     {"wborder",      1, ex_wborder,    0},
     {"wclear",       1, ex_wclear,     0},
     {"wmove",        3, ex_wmove,      0},
-    {"wrefresh",     1, ex_wrefresh,   0}
+    {"wrefresh",     1, ex_wrefresh,   0},
+    {"wnoutrefresh", 1, ex_wnoutrefresh, 0}
 };
 
 static ERL_NIF_TERM

@@ -458,6 +458,27 @@ defmodule ExNcurses do
   @spec wmove(window(), non_neg_integer(), non_neg_integer()) :: :ok
   def wmove(win, y, x), do: Server.invoke(:wmove, {win, y, x})
 
+  @doc """
+  Refresh a window and update the screen.
+
+  This is equivalent to calling `wrefresh/1` and `doupdate/0`.
+  """
   @spec wrefresh(window()) :: :ok
   def wrefresh(w), do: Server.invoke(:wrefresh, {w})
+
+  @doc """
+  Refresh a window without updating the screen.
+
+  This is useful if you have overlapping windows and you want to eliminate unnecessary screen refreshes.  You can call `wnoutrefresh/1` on each window (from back to front), then call `doupdate/0` at the end to push the changes to the screen.
+  """
+  @spec wnoutrefresh(window()) :: :ok
+  def wnoutrefresh(w), do: Server.invoke(:wnoutrefresh, {w})
+
+  @doc """
+  Update the screen.
+
+  Useful in combination with functions that update the internal buffer without updating the screen, e.g. `wnoutrefresh/1`.
+  """
+  @spec doupdate() :: :ok
+  def doupdate(), do: Server.invoke(:doupdate)
 end
