@@ -420,6 +420,12 @@ defmodule ExNcurses do
   def scrollok(), do: Server.invoke(:scrollok)
 
   @doc """
+  Enable or disable scrolling on a specific window.
+  """
+  @spec scrollok(window(), boolean()) :: :ok
+  def scrollok(w, b), do: Server.invoke(:scrollok, {w, b})
+
+  @doc """
   Set a scrollable region on the `stdscr`
   """
   @spec setscrreg(non_neg_integer(), non_neg_integer()) :: :ok
