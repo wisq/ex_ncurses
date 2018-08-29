@@ -56,7 +56,15 @@ defmodule ExNcurses.MixProject do
       maintainers: ["Jim Freeze, Frank Hunleth, Justin Schneck"],
       licenses: ["MIT"],
       links: %{"GitHub" => "https://github.com/jfreeze/ex_ncurses"},
-      files: ["CHANGELOG.md", "LICENSE", "README.md", "lib/**/*.ex", "mix.exs", "Makefile", "src/*.c"]
+      files: [
+        "CHANGELOG.md",
+        "LICENSE",
+        "README.md",
+        "lib/**/*.ex",
+        "mix.exs",
+        "Makefile",
+        "src/*.c"
+      ]
     ]
   end
 
