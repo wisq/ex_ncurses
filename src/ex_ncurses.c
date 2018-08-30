@@ -6,6 +6,7 @@
 #include <limits.h>
 #include <locale.h>
 #include <sys/stat.h>
+#include <signal.h>
 
 //#define DEBUG
 
@@ -48,7 +49,12 @@ struct ex_ncurses_priv {
 
     bool ncurses_initialized;
     bool polling;
+    bool sigwinch_installed;
 };
+
+static ErlNifPid server_pid;
+static struct sigaction old_sigwinch;
+
 
 // TODO: rename this to something
 static void rt_dtor(ErlNifEnv *env, void *obj)
@@ -120,6 +126,7 @@ static int load(ErlNifEnv *env, void **priv, ERL_NIF_TERM info)
     data->using_regular_file = false;
 
     data->polling = false;
+    data->sigwinch_installed = false;
 
     data->stdin_fd = -1;
     data->stdin_fp = NULL;
@@ -268,6 +275,11 @@ ex_endwin(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[])
         close(data->pipe_to_nowhere[1]);
     }
 
+    if (data->sigwinch_installed) {
+	sigaction(SIGWINCH, &old_sigwinch, NULL);
+	data->sigwinch_installed = false;
+    }
+
     fclose(data->stdin_fp); // This also closes data->stdin_fd
     data->stdin_fd = -1;
     data->stdin_fp = NULL;
@@ -275,6 +287,15 @@ ex_endwin(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[])
     data->ncurses_initialized = false;
     debug("endwin done");
     return done(env, code);
+}
+
+static ERL_NIF_TERM
+ex_isendwin(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[])
+{
+    if (isendwin())
+        return enif_make_atom(env, "true");
+    else
+        return enif_make_atom(env, "false");
 }
 
 static ERL_NIF_TERM
@@ -778,6 +799,57 @@ ex_poll(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[])
     }
 }
 
+void
+handle_sigwinch(int signum) {
+    debug("sigwinch handler called (%d)", signum);
+
+    if (old_sigwinch.sa_handler == SIG_DFL ||
+        old_sigwinch.sa_handler == SIG_ERR ||
+        old_sigwinch.sa_handler == SIG_IGN ||
+        old_sigwinch.sa_handler == NULL) {
+	debug("no previous sigwinch handler");
+	return; // no point in notifying the server
+    } else {
+	(old_sigwinch.sa_handler)(signum);
+    }
+
+    ErlNifEnv *msg_env = enif_alloc_env();
+    ERL_NIF_TERM atom_sigwch = enif_make_atom(msg_env, "sigwinch");
+    ERL_NIF_TERM term_signum = enif_make_uint(msg_env, signum);
+    ERL_NIF_TERM msg = enif_make_tuple2(msg_env, atom_sigwch, term_signum);
+    debug("sending {:sigwinch, %d} to server", signum);
+    enif_send(NULL, &server_pid, msg_env, msg);
+}
+
+static ERL_NIF_TERM
+ex_setup_sigwinch(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[])
+{
+    struct ex_ncurses_priv *data = enif_priv_data(env);
+    if (data->sigwinch_installed) {
+	debug("sigwinch handler already installed");
+	return enif_make_tuple2(env,
+				enif_make_atom(env, "error"),
+				enif_make_atom(env, "already_installed"));
+    }
+
+    if (!enif_get_local_pid(env, argv[0], &server_pid))
+	return enif_make_badarg(env);
+
+    struct sigaction new_sigwinch;
+
+    new_sigwinch.sa_handler = handle_sigwinch;
+    sigemptyset(&new_sigwinch.sa_mask);
+    new_sigwinch.sa_flags = 0;
+
+    int code = sigaction(SIGWINCH, &new_sigwinch, &old_sigwinch);
+    if (code == 0) {
+	data->sigwinch_installed = true;
+	return data->atom_ok;
+    } else {
+        return make_error(env, "sigaction");
+    }
+}
+
 static ERL_NIF_TERM
 ex_read(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[])
 {
@@ -855,7 +927,8 @@ static ErlNifFunc invoke_funcs[] = {
     {"wrefresh",     1, ex_wrefresh,   0},
     {"wnoutrefresh", 1, ex_wnoutrefresh, 0},
     {"wresize",      3, ex_wresize,    0},
-    {"mvwin",        3, ex_mvwin,      0}
+    {"mvwin",        3, ex_mvwin,      0},
+    {"isendwin",     0, ex_isendwin,   0}
 };
 
 static ERL_NIF_TERM
@@ -896,7 +969,8 @@ static ErlNifFunc nif_funcs[] = {
     {"newterm",   2, ex_newterm, 0},
     {"invoke",    2, ex_invoke,  0},
     {"poll",      0, ex_poll,    0},
-    {"read",      0, ex_read,    0}
+    {"read",      0, ex_read,    0},
+    {"setup_sigwinch", 1, ex_setup_sigwinch, 0}
 };
 
 ERL_NIF_INIT(Elixir.ExNcurses.Nif, nif_funcs,

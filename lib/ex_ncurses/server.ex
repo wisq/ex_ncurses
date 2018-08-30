@@ -74,7 +74,11 @@ defmodule ExNcurses.Server do
     :erlang.system_flag(:multi_scheduling, :unblock)
 
     # Assuming initialization was ok, start polling stdin for key presses
-    if rc == :ok, do: Nif.poll()
+    # and setup the sigwinch handler
+    if rc == :ok do
+      :ok = Nif.setup_sigwinch(self())
+      :ok = Nif.poll()
+    end
 
     {:reply, rc, state}
   end
@@ -100,7 +104,25 @@ defmodule ExNcurses.Server do
 
   def handle_info({:select, _res, _ref, :ready_input}, state) do
     key = Nif.read()
-    maybe_send(state.pid, {:ex_ncurses, :key, key})
+
+    # Avoid duplicate `:resize` keys.  See `:sigwinch` handler, below.
+    if key != :resize do
+      maybe_send(state.pid, {:ex_ncurses, :key, key})
+    end
+
+    {:noreply, state}
+  end
+
+  # Ordinarily, ncurses' own SIGWINCH handler would send a fake `KEY_RESIZE`
+  # event via `getch`.  However, because we don't `getch` until we detect real
+  # input (via `:select`), we can't respond to terminal resizes in a timely
+  # fashion.
+  #
+  # This signal handler fixes that.  By the time we receive this, the original
+  # ncurses SIGWINCH handler will have already been called, and ncurses will
+  # have resized itself to the new terminal size.
+  def handle_info({:sigwinch, _signum}, state) do
+    maybe_send(state.pid, {:ex_ncurses, :key, :resize})
     {:noreply, state}
   end
 

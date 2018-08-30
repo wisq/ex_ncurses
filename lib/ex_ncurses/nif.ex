@@ -7,6 +7,16 @@ defmodule ExNcurses.Nif do
     Application.app_dir(:ex_ncurses, "priv/ex_ncurses")
     |> to_charlist
     |> :erlang.load_nif(0)
+    |> check_load_result()
+  end
+
+  defp check_load_result(:ok), do: :ok
+
+  defp check_load_result({:error, {reason, msg}}) do
+    # I'd like to use Logger.error here, but we can't rely
+    # on Logger being available yet.
+    IO.puts("\nERROR: Failed to load #{__MODULE__} (#{reason}): #{msg}\n")
+    :abort
   end
 
   @doc """
@@ -25,6 +35,15 @@ defmodule ExNcurses.Nif do
   Read an event.
   """
   def read(), do: :erlang.nif_error(:nif_not_loaded)
+
+  @doc """
+  Setup the SIGWINCH signal handler.
+
+  Upon receiving SIGWINCH, the original ncurses handler will be called, and
+  then a `{:sigwinch, n}` message (where `n` is the signal number) will be
+  delivered to `pid`.
+  """
+  def setup_sigwinch(pid), do: :erlang.nif_error(:nif_not_loaded)
 
   @doc """
   Stop using ncurses.

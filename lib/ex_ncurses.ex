@@ -499,4 +499,10 @@ defmodule ExNcurses do
   """
   @spec mvwin(window(), non_neg_integer(), non_neg_integer()) :: :ok
   def mvwin(win, y, x), do: Server.invoke(:mvwin, {win, y, x})
+
+  @doc """
+  Returns true if `endwin/0` has been called, and there have been no subsequent refreshes with `refresh/0` or `wrefresh/1`.
+  """
+  @spec isendwin() :: boolean()
+  def isendwin(), do: Server.invoke(:isendwin)
 end
