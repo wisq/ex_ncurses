@@ -4,10 +4,15 @@ defmodule ExNcurses.Nif do
   @compile {:autoload, false}
   @on_load {:load_nif, 0}
   def load_nif() do
-    Application.app_dir(:ex_ncurses, "priv/ex_ncurses")
+    nif_path()
     |> to_charlist
     |> :erlang.load_nif(0)
     |> check_load_result()
+  end
+
+  defp nif_path() do
+    Application.get_env(:ex_ncurses, :nif_path) ||
+      Application.app_dir(:ex_ncurses, "priv/ex_ncurses")
   end
 
   defp check_load_result(:ok), do: :ok
